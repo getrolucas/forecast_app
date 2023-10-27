@@ -11,22 +11,6 @@ ano = datetime.date.today().year
 mes = datetime.date.today().month                
 nome = f'{ano}_{mes}_Streamlit_Prophet.csv'
 
-# configurações do front-end do app
-st.set_page_config(layout="wide")
-
-st.title('Forecast com Prophet')        
-st.sidebar.title('Informações')    
-
-st.sidebar.write(
-    '''
-    Para usar o modelo, tenha uma base de dados
-    com uma coluna de datas nomeada 'ds' e padrão 'dd/mm/aaaa' e outra 
-    com valores nomeada 'y' sem separador de milhar.
-    '''
-    )
-
-st.sidebar.markdown("---")
-
 # Função para aplicar o modelo
 def modelo(dados):
     m = Prophet()
@@ -49,6 +33,30 @@ def modelo(dados):
     forecast.columns = ['Data','Previsão','Upper','Lower','Real']
     forecast['MAPE'] = 1-np.abs((forecast.Real-forecast.Previsão)/forecast.Real)
     return forecast
+
+# configurações do front-end do app
+st.set_page_config(layout="wide")
+
+st.title('Forecast com Prophet')        
+st.sidebar.title('Informações')    
+
+st.sidebar.write(
+    '''
+    Para usar o modelo, tenha uma base de dados
+    com uma coluna 'ds' contendo datas no padrão 'dd/mm/aaaa' 
+    e uma coluna 'y' contendo valores sem separador de milhar.\n
+    Exemplo:
+    '''
+    )
+st.sidebar.write(
+    pd.DataFrame(
+        {
+            'ds':['31/01/2023','28/02/2023'],
+            'y':['12345','56789']
+        }
+    )
+)
+st.sidebar.markdown("---")
 
 # Upload de arquivo
 st.sidebar.subheader('Faça upload do arquivo .csv')
