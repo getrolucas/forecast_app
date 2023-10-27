@@ -2,6 +2,7 @@
 import streamlit as st
 import pandas as pd
 import numpy as np
+import plotly.express as px
 from prophet import Prophet
 import datetime
 
@@ -26,25 +27,27 @@ st.sidebar.write(
 
 st.sidebar.markdown("---")
 
-col1, col2 = st.columns(2)
-
 # Função para aplicar o modelo
 def modelo(dados):
     m = Prophet()
     
     m.fit(dados)
     
-    future = m.make_future_dataframe(periods=12)
+    future = m.make_future_dataframe(periods=12, freq='M')
     
     forecast = m.predict(future)
-    forecast = forecast[['ds', 'yhat']]
+    forecast = forecast[['ds', 'yhat', 'yhat_upper','yhat_lower']]
     forecast['yhat'] = forecast.yhat.astype(int)
+    forecast['yhat_upper'] = forecast.yhat_upper.astype(int)
+    forecast['yhat_lower'] = forecast.yhat_lower.astype(int)
     forecast = pd.merge(
         left=forecast, 
         right=dados, 
         on=['ds'],
         how='left'
     )
+    forecast.columns = ['Data','Previsão','Upper','Lower','Real']
+    forecast['MAPE'] = 1-np.abs((forecast.Real-forecast.Previsão)/forecast.Real)
     return forecast
 
 # Upload de arquivo
@@ -66,17 +69,37 @@ if uploaded_file is not None:
         
         resultado = modelo(df)
         
-        # Tabela com resultado
-        col1.subheader('Resultado')
-        col1.write(resultado)
-        
-        col2.subheader('Visualização')
-        col2.line_chart(
+        # Gráfico com resultado
+        st.subheader('Visualização')
+        fig = px.line(
             resultado, 
-            x="ds", 
-            y=["y", "yhat"]
+            x='Data', 
+            y=['Real', 'Previsão'],
+            width=1000,
+            labels={'value':'Valores'}
         )
 
+        # Adicionar as colunas 'Upper' e 'Lower' com cores diferentes
+        fig.add_scatter(
+            x=resultado['Data'], 
+            y=resultado['Upper'], 
+            mode='lines', 
+            name='Upper', 
+            line=dict(color='#ebeced')
+        )
+        fig.add_scatter(
+            x=resultado['Data'], 
+            y=resultado['Lower'], 
+            mode='lines', 
+            name='Lower', 
+            line=dict(color='#ebeced')
+        )
+        st.plotly_chart(fig)
+        
+        # Tabela com resultado
+        st.subheader('Resultado')
+        st.write(resultado)
+        
         # Baixar resultados
         st.download_button(
             label="Baixar Resultados em .csv",
