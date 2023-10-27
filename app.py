@@ -71,19 +71,12 @@ if uploaded_file is not None:
         col1.subheader('Resultado')
         col1.write(resultado)
         
-        fig = px.line(
-            resultado, 
-            x='ds', 
-            y=['y','yhat'],
-            width=500,
-            labels={
-                'ds': 'Data', 
-                'value': 'Valores'
-            }
-        ) 
-        
         col2.subheader('Visualização')
-        col2.plotly_chart(fig)
+        col2.line_chart(
+            resultado, 
+            x="ds", 
+            y=["y", "yhat"]
+        )
 
         # Baixar resultados
         st.download_button(
