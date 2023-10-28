@@ -11,29 +11,6 @@ ano = datetime.date.today().year
 mes = datetime.date.today().month                
 nome = f'{ano}_{mes}_Streamlit_Prophet.csv'
 
-# Função para aplicar o modelo
-def modelo(dados):
-    m = Prophet()
-    
-    m.fit(dados)
-    
-    future = m.make_future_dataframe(periods=12, freq='M')
-    
-    forecast = m.predict(future)
-    forecast = forecast[['ds', 'yhat', 'yhat_upper','yhat_lower']]
-    forecast['yhat'] = forecast.yhat.astype(int)
-    forecast['yhat_upper'] = forecast.yhat_upper.astype(int)
-    forecast['yhat_lower'] = forecast.yhat_lower.astype(int)
-    forecast = pd.merge(
-        left=forecast, 
-        right=dados, 
-        on=['ds'],
-        how='left'
-    )
-    forecast.columns = ['Data','Previsão','Upper','Lower','Real']
-    forecast['MAPE'] = 1-np.abs((forecast.Real-forecast.Previsão)/forecast.Real)
-    return forecast
-
 # configurações do front-end do app
 st.set_page_config(layout="wide")
 
@@ -48,19 +25,51 @@ st.sidebar.write(
     Exemplo:
     '''
     )
+
 st.sidebar.write(
     pd.DataFrame(
         {
-            'ds':['31/01/2023','28/02/2023'],
-            'y':['12345','56789']
+            'ds':['31/01/2023'],
+            'y':['12345']
         }
     )
 )
+
 st.sidebar.markdown("---")
 
-# Upload de arquivo
-st.sidebar.subheader('Faça upload do arquivo .csv')
-uploaded_file = st.sidebar.file_uploader("", type=["csv"])
+# upload de arquivo
+st.sidebar.subheader('Configurações')
+uploaded_file = st.sidebar.file_uploader('Faça upload do arquivo .csv', type=["csv"])
+
+# selecionar quantidade de meses
+periods = st.sidebar.slider('Quantos meses quer prever?', 3, 24, 12)
+st.sidebar.write("O modelo irá prever ", periods, 'meses.')
+
+# função para aplicar o modelo
+def modelo(dados):
+    
+    freq = pd.infer_freq(dados.ds)
+    m = Prophet()
+    
+    m.fit(dados)
+    
+    future = m.make_future_dataframe(
+        periods=periods, 
+        freq=freq
+    )
+    
+    forecast = m.predict(future)
+    forecast = forecast[['ds', 'yhat', 'yhat_upper','yhat_lower']]
+    forecast = pd.merge(
+        left=forecast, 
+        right=dados, 
+        on=['ds'],
+        how='left'
+    )
+    forecast.columns = ['Data','Previsão','Upper','Lower','Real']
+    forecast['MAPE'] = 1-np.abs((forecast.Real-forecast.Previsão)/forecast.Real)
+    return forecast
+# fim da função
 
 if uploaded_file is not None:
     
@@ -71,13 +80,13 @@ if uploaded_file is not None:
         on_bad_lines='skip',
         sep=';'
     )
-
-    # Botão rodar o modelp
+    
+    # botão rodar o modelo
     if st.sidebar.button('Aplicar Modelo'):
         
         resultado = modelo(df)
         
-        # Gráfico com resultado
+        # gráfico com resultado
         st.subheader('Visualização')
         fig = px.line(
             resultado, 
@@ -87,7 +96,7 @@ if uploaded_file is not None:
             labels={'value':'Valores'}
         )
 
-        # Adicionar as colunas 'Upper' e 'Lower' com cores diferentes
+        # adicionar as colunas 'upper' e 'lower'
         fig.add_scatter(
             x=resultado['Data'], 
             y=resultado['Upper'], 
@@ -104,11 +113,11 @@ if uploaded_file is not None:
         )
         st.plotly_chart(fig)
         
-        # Tabela com resultado
+        # tabela com resultado
         st.subheader('Resultado')
         st.write(resultado)
         
-        # Baixar resultados
+        # baixar resultados
         st.download_button(
             label="Baixar Resultados em .csv",
             data=resultado.to_csv(
